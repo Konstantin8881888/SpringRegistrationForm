@@ -3,6 +3,7 @@ package com.example.auth.access;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -24,14 +25,21 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter
     {
         http
                 .cors(Customizer.withDefaults())
-                .csrf().disable()
-//                .csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()).and()
+//                .csrf().disable()
+                .csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()).and()
                 .authorizeRequests()
                 .antMatchers("/api/v1/auth/login", "/api/v1/auth/registration", "/api/v1/auth/current").permitAll()
                 .anyRequest()
                 .authenticated().and()
                 .apply(jwtTokenConfig);
     }
+
+    @Bean
+    public AuthenticationManager authenticationManagerBean() throws Exception
+    {
+        return super.authenticationManagerBean();
+    }
+
 //    @Bean
 //    public WebMvcConfigurer corsConfig()
 //    {

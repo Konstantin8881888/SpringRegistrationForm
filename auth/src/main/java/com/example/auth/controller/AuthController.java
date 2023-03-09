@@ -2,14 +2,17 @@ package com.example.auth.controller;
 
 import com.example.auth.access.JwtTokenProvider;
 import com.example.auth.bean.ErrorResponse;
+import com.example.auth.bean.LoginRequest;
 import com.example.auth.bean.RegistrationRequest;
 import com.example.auth.bean.UserResponse;
 import com.example.auth.entity.AppUser;
+import com.example.auth.service.LoginService;
 import com.example.auth.service.RegistrationService;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.Cookie;
@@ -24,6 +27,7 @@ public class AuthController
 {
     private final RegistrationService registrationService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final LoginService loginService;
 
     @PostMapping(path = "registration")
     public ResponseEntity<?> registration(@RequestBody RegistrationRequest registrationRequest, HttpServletResponse response)
@@ -38,9 +42,60 @@ public class AuthController
         catch (Exception e)
         {
             log.error(e.getLocalizedMessage());
-            clearAuthToken(response);
+            clearAuthAndRefreshTokens(response);
             return buildErrorResponse(e.getLocalizedMessage());
         }
+    }
+
+    @PostMapping(path = "login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response)
+    {
+        try {
+            AppUser appUser = loginService.login(loginRequest.getEmail(), loginRequest.getPassword());
+            setAuthToken(appUser, response);
+            setRefreshToken(appUser, response);
+            return buildUserResponse(appUser);
+        }
+        catch (Exception e)
+        {
+            log.error(e.getLocalizedMessage());
+            clearAuthAndRefreshTokens(response);
+            return buildErrorResponse(e.getLocalizedMessage());
+        }
+    }
+
+    @GetMapping(path = "current")
+    public ResponseEntity<?> current()
+    {
+        try
+        {
+            AppUser appUser = (AppUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            return buildUserResponse(appUser);
+        }
+        catch (NullPointerException e)
+        {
+            log.error(e.getLocalizedMessage());
+        }
+
+            return buildUserResponse(new AppUser());
+    }
+
+    @GetMapping(path = "logout")
+    public ResponseEntity<?> logout(HttpServletResponse httpServletResponse)
+    {
+        clearAuthAndRefreshTokens(httpServletResponse);
+        SecurityContextHolder.clearContext();
+        return buildUserResponse(new AppUser());
+    }
+
+    private void clearAuthAndRefreshTokens(HttpServletResponse httpServletResponse)
+    {
+        Cookie authCookie = new Cookie(jwtTokenProvider.getAuthCookieName(), "-");
+        authCookie.setPath(jwtTokenProvider.getCookiePath());
+        Cookie refreshCookie = new Cookie(jwtTokenProvider.getRefreshCookieName(), "-");
+        refreshCookie.setPath(jwtTokenProvider.getCookiePath());
+        httpServletResponse.addCookie(authCookie);
+        httpServletResponse.addCookie(refreshCookie);
     }
 
     private void setAuthToken(@NonNull AppUser appUser, HttpServletResponse httpServletResponse)
@@ -63,15 +118,15 @@ public class AuthController
         httpServletResponse.addCookie(cookie);
     }
 
-    private void clearAuthToken(HttpServletResponse httpServletResponse)
-    {
-        Cookie authCookie = new Cookie(jwtTokenProvider.getAuthCookieName(), "-");
-        authCookie.setPath(jwtTokenProvider.getCookiePath());
-        Cookie refreshCookie = new Cookie(jwtTokenProvider.getRefreshCookieName(), "-");
-        refreshCookie.setPath(jwtTokenProvider.getCookiePath());
-        httpServletResponse.addCookie(authCookie);
-        httpServletResponse.addCookie(refreshCookie);
-    }
+//    private void clearAuthToken(HttpServletResponse httpServletResponse)
+//    {
+//        Cookie authCookie = new Cookie(jwtTokenProvider.getAuthCookieName(), "-");
+//        authCookie.setPath(jwtTokenProvider.getCookiePath());
+//        Cookie refreshCookie = new Cookie(jwtTokenProvider.getRefreshCookieName(), "-");
+//        refreshCookie.setPath(jwtTokenProvider.getCookiePath());
+//        httpServletResponse.addCookie(authCookie);
+//        httpServletResponse.addCookie(refreshCookie);
+//    }
 
     private ResponseEntity<?> buildUserResponse(AppUser appUser)
     {
