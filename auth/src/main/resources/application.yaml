@@ -22,3 +22,4 @@ auth:
     expiration-auth: 600000
     expiration-refresh: 31536000
     path: /
+debug: false

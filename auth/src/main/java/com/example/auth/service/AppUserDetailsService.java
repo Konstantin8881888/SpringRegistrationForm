@@ -4,6 +4,7 @@ import com.example.auth.bean.RegistrationRequest;
 import com.example.auth.entity.AppUser;
 import com.example.auth.repository.UserRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.security.authentication.CachingUserDetailsService;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -43,5 +44,10 @@ public class AppUserDetailsService implements UserDetailsService
     private String encodeString(String password)
     {
         return passwordEncoder.encode(password);
+    }
+
+    public AppUser retrieveFromCache(String email)
+    {
+        return (AppUser) new CachingUserDetailsService(this).loadUserByUsername(email);
     }
 }
